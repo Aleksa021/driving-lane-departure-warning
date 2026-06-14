@@ -7,6 +7,9 @@ __date__ = "March 2017"
 
 import numpy as np
 import cv2
+import matplotlib
+# matplotlib.use("QtAgg")  # or TkAgg
+
 import matplotlib.pyplot as plt
 from timeit import default_timer as timer
 from calibration import load_calibration
@@ -188,7 +191,7 @@ def find_edges(img, s_thresh=s_thresh, sx_thresh=sx_thresh, dir_thresh=dir_thres
 
     img = np.copy(img)
     # Convert to HSV color space and threshold the s channel
-    hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS).astype(np.float)
+    hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS).astype(float)
     s_channel = hls[:,:,2]
     s_binary = threshold_col_channel(s_channel, thresh=s_thresh)
 
@@ -223,21 +226,21 @@ def warper(img, M):
 ## fit the lane line
 def full_search(binary_warped, visualization=False):
 
-    histogram = np.sum(binary_warped[binary_warped.shape[0]/2:,:], axis=0)
+    histogram = np.sum(binary_warped[binary_warped.shape[0]//2:,:], axis=0)
     # Create an output image to draw on and  visualize the result
     out_img = np.dstack((binary_warped, binary_warped, binary_warped))*255
     out_img = out_img.astype('uint8')
 
     # Find the peak of the left and right halves of the histogram
     # These will be the starting point for the left and right lines
-    midpoint = np.int(histogram.shape[0]/2)
+    midpoint = np.int64(histogram.shape[0]/2)
     leftx_base = np.argmax(histogram[:midpoint])
     rightx_base = np.argmax(histogram[midpoint:]) + midpoint
 
     # Choose the number of sliding windows
     nwindows = 9
     # Set height of windows
-    window_height = np.int(binary_warped.shape[0]/nwindows)
+    window_height = np.int64(binary_warped.shape[0]/nwindows)
     # Identify the x and y positions of all nonzero pixels in the image
     nonzero = binary_warped.nonzero()
     nonzeroy = np.array(nonzero[0])
@@ -275,9 +278,9 @@ def full_search(binary_warped, visualization=False):
         right_lane_inds.append(good_right_inds)
         # If you found > minpix pixels, recenter next window on their mean position
         if len(good_left_inds) > minpix:
-            leftx_current = np.int(np.mean(nonzerox[good_left_inds]))
+            leftx_current = np.int64(np.mean(nonzerox[good_left_inds]))
         if len(good_right_inds) > minpix:
-            rightx_current = np.int(np.mean(nonzerox[good_right_inds]))
+            rightx_current = np.int64(np.mean(nonzerox[good_right_inds]))
 
     # Concatenate the arrays of indices
     left_lane_inds = np.concatenate(left_lane_inds)
@@ -421,7 +424,7 @@ def off_center(left, mid, right):
         offset = a / width * LANEWIDTH - LANEWIDTH /2.0
     else:       # driving left off
         offset = LANEWIDTH /2.0 - b / width * LANEWIDTH
-
+    offset = np.abs((max(a,b)/width-1/2)*LANEWIDTH )
     return offset
 
 
@@ -464,7 +467,7 @@ def create_output_frame(offcenter, pts, undist_ori, fps, curvature, curve_direct
     color_warp = np.zeros_like(undist_ori).astype(np.uint8)
 
     # create a frame to hold every image
-    whole_frame = np.zeros((h*2.5,w*2.34, 3), dtype=np.uint8)
+    whole_frame = np.zeros((int(h*2.5), int(w*2.34), 3), dtype=np.uint8)
 
 
     if abs(offcenter) > threshold:  # car is offcenter more than 0.6 m
@@ -484,10 +487,10 @@ def create_output_frame(offcenter, pts, undist_ori, fps, curvature, curve_direct
     ############## generate the combined output frame only for visualization purpose ################
     whole_frame[40:40+h, 20:20+w, :] = undist_ori
     whole_frame[40:40+h, 60+w:60+2*w, :] = output
-    whole_frame[220+h/2:220+2*h/2, 20:20+w/2, :] = undist_birdview
-    whole_frame[220+h/2:220+2*h/2, 40+w/2:40+w, 0] = cv2.resize((binary_sub*255).astype(np.uint8), (0,0), fx=1/2, fy=1/2)
-    whole_frame[220+h/2:220+2*h/2, 40+w/2:40+w, 1] = cv2.resize((binary_sub*255).astype(np.uint8), (0,0), fx=1/2, fy=1/2)
-    whole_frame[220+h/2:220+2*h/2, 40+w/2:40+w, 2] = cv2.resize((binary_sub*255).astype(np.uint8), (0,0), fx=1/2, fy=1/2)
+    whole_frame[220+h//2:220+2*h//2, 20:20+w//2, :] = undist_birdview
+    whole_frame[220+h//2:220+2*h//2, 40+w//2:40+w, 0] = cv2.resize((binary_sub*255).astype(np.uint8), (0,0), fx=1/2, fy=1/2)
+    whole_frame[220+h//2:220+2*h//2, 40+w//2:40+w, 1] = cv2.resize((binary_sub*255).astype(np.uint8), (0,0), fx=1/2, fy=1/2)
+    whole_frame[220+h//2:220+2*h//2, 40+w//2:40+w, 2] = cv2.resize((binary_sub*255).astype(np.uint8), (0,0), fx=1/2, fy=1/2)
 
     font = cv2.FONT_HERSHEY_SIMPLEX
     if offcenter >= 0:
